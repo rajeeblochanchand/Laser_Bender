@@ -10,7 +10,10 @@ import com.example.laserbender.data.model.LightSource
 import com.example.laserbender.data.model.Mirror
 import com.example.laserbender.utils.RayTracer
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 class LaserCanvasView @JvmOverloads constructor(
     context: Context,
@@ -119,19 +122,26 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private fun findNextAvailablePosition(initialPosition: PointF): PointF {
-        var position = initialPosition
-        val offset = 60f // The radius of the gizmo
+        val radius = 80f // A bit more than the gizmo radius
+        if (!isPositionOccupied(initialPosition, radius)) {
+            return initialPosition
+        }
+
+        var candidate = initialPosition
         var counter = 0
-        while (isPositionOccupied(position) && counter < 100) {
-            position = PointF(position.x + offset, position.y)
+        while (isPositionOccupied(candidate, radius) && counter < 100) {
+            val angle = Random.nextFloat() * 2 * Math.PI
+            val offsetX = radius * cos(angle).toFloat()
+            val offsetY = radius * sin(angle).toFloat()
+            candidate = PointF(candidate.x + offsetX, candidate.y + offsetY)
             counter++
         }
-        return position
+        return candidate
     }
 
-    private fun isPositionOccupied(position: PointF): Boolean {
+    private fun isPositionOccupied(position: PointF, radius: Float): Boolean {
         val allObjects = lights.map { it.position } + mirrors.map { it.position } + flags.map { it.position }
-        return allObjects.any { it.x == position.x && it.y == position.y }
+        return allObjects.any { p -> distance(p.x, p.y, position.x, position.y) < radius }
     }
 
     fun deleteSelected() {
