@@ -38,7 +38,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
     // Paint objects
     private val laserPaint = Paint().apply {
-        strokeWidth = 2f
+        strokeWidth = 6f
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         isAntiAlias = true
@@ -260,11 +260,11 @@ class LaserCanvasView @JvmOverloads constructor(
         // Draw the glow first
         iconGlowPaint.color = light.color
         iconGlowPaint.alpha = 150 // Subtle glow
-        canvas.drawCircle(light.position.x, light.position.y, 18f, iconGlowPaint)
+        canvas.drawCircle(light.position.x, light.position.y, 19f, iconGlowPaint)
 
         // Draw a small circle for the light source
         iconPaint.color = light.color
-        canvas.drawCircle(light.position.x, light.position.y, 15f, iconPaint)
+        canvas.drawCircle(light.position.x, light.position.y, 18f, iconPaint)
 
         // Draw direction indicator (arrow)
         val dir = light.getDirection()
