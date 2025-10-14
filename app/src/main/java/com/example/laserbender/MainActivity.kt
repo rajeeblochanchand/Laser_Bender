@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
-import android.widget.Button
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -21,12 +21,12 @@ import java.io.OutputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var laserCanvas: LaserCanvasView
-    private lateinit var btnAddLight: Button
-    private lateinit var btnAddMirror: Button
-    private lateinit var btnAddFlag: Button
-    private lateinit var btnDelete: Button
-    private lateinit var btnChangeColor: Button
-    private lateinit var btnSave: Button
+    private lateinit var btnAddLight: ImageButton
+    private lateinit var btnAddMirror: ImageButton
+    private lateinit var btnAddFlag: ImageButton
+    private lateinit var btnDelete: ImageButton
+    private lateinit var btnChangeColor: ImageButton
+    private lateinit var btnSave: ImageButton
 
     private var defaultColor: Int = Color.RED
 
