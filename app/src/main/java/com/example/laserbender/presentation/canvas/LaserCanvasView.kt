@@ -100,22 +100,38 @@ class LaserCanvasView @JvmOverloads constructor(
         onSelectionChanged = listener
     }
 
-    fun addLight(position: PointF? = null) {
-        val pos = position ?: PointF(width / 2f, height / 2f)
+    fun addLight() {
+        val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
         lights.add(LightSource(position = pos))
         invalidate()
     }
 
-    fun addMirror(position: PointF? = null) {
-        val pos = position ?: PointF(width / 2f, height / 2f)
+    fun addMirror() {
+        val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
         mirrors.add(Mirror(position = pos))
         invalidate()
     }
 
-    fun addFlag(position: PointF? = null) {
-        val pos = position ?: PointF(width / 2f, height / 2f)
+    fun addFlag() {
+        val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
         flags.add(Flag(position = pos))
         invalidate()
+    }
+
+    private fun findNextAvailablePosition(initialPosition: PointF): PointF {
+        var position = initialPosition
+        val offset = 60f // The radius of the gizmo
+        var counter = 0
+        while (isPositionOccupied(position) && counter < 100) {
+            position = PointF(position.x + offset, position.y)
+            counter++
+        }
+        return position
+    }
+
+    private fun isPositionOccupied(position: PointF): Boolean {
+        val allObjects = lights.map { it.position } + mirrors.map { it.position } + flags.map { it.position }
+        return allObjects.any { it.x == position.x && it.y == position.y }
     }
 
     fun deleteSelected() {
