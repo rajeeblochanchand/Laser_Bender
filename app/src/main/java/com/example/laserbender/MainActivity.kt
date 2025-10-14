@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -27,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnDelete: ImageButton
     private lateinit var btnChangeColor: ImageButton
     private lateinit var btnSave: ImageButton
+    private lateinit var buttonContainer: LinearLayout
 
     private var defaultColor: Int = Color.RED
 
@@ -40,6 +42,7 @@ class MainActivity : AppCompatActivity() {
 
         // Find views
         laserCanvas = findViewById(R.id.laserCanvas)
+        buttonContainer = findViewById(R.id.buttonContainer)
         btnAddLight = findViewById(R.id.btnAddLight)
         btnAddMirror = findViewById(R.id.btnAddMirror)
         btnAddFlag = findViewById(R.id.btnAddFlag)
@@ -53,6 +56,16 @@ class MainActivity : AppCompatActivity() {
         laserCanvas.setOnSelectionChangedListener { hasSelection, isLightSource ->
             btnDelete.visibility = if (hasSelection) View.VISIBLE else View.INVISIBLE
             btnChangeColor.visibility = if (isLightSource) View.VISIBLE else View.INVISIBLE
+        }
+
+        buttonContainer.post {
+            val width = btnAddLight.width
+            val buttons = listOf(btnAddLight, btnAddMirror, btnAddFlag, btnDelete, btnChangeColor, btnSave)
+            for (button in buttons) {
+                val params = button.layoutParams
+                params.height = width
+                button.layoutParams = params
+            }
         }
     }
 
