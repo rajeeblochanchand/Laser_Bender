@@ -28,32 +28,36 @@
 
         <ImageButton
             android:id="@+id/btnAddLight"
-            android:layout_width="56dp"
+            android:layout_width="0dp"
             android:layout_height="56dp"
+            android:layout_weight="1"
             android:src="@drawable/ic_add_light"
             android:background="@drawable/button_background_default"
             android:layout_marginEnd="8dp"/>
 
         <ImageButton
             android:id="@+id/btnAddMirror"
-            android:layout_width="56dp"
+            android:layout_width="0dp"
             android:layout_height="56dp"
+            android:layout_weight="1"
             android:src="@drawable/ic_add_mirror"
             android:background="@drawable/button_background_default"
             android:layout_marginEnd="8dp"/>
 
         <ImageButton
             android:id="@+id/btnAddFlag"
-            android:layout_width="56dp"
+            android:layout_width="0dp"
             android:layout_height="56dp"
+            android:layout_weight="1"
             android:src="@drawable/ic_add_flag"
             android:background="@drawable/button_background_default"
             android:layout_marginEnd="16dp"/>
 
         <ImageButton
             android:id="@+id/btnDelete"
-            android:layout_width="56dp"
+            android:layout_width="0dp"
             android:layout_height="56dp"
+            android:layout_weight="1"
             android:src="@drawable/ic_delete"
             android:background="@drawable/button_background_red"
             android:visibility="invisible"
@@ -61,8 +65,9 @@
 
         <ImageButton
             android:id="@+id/btnChangeColor"
-            android:layout_width="56dp"
+            android:layout_width="0dp"
             android:layout_height="56dp"
+            android:layout_weight="1"
             android:src="@drawable/ic_change_color"
             android:background="@drawable/button_background_default"
             android:visibility="invisible"
@@ -70,8 +75,9 @@
 
         <ImageButton
             android:id="@+id/btnSave"
-            android:layout_width="56dp"
+            android:layout_width="0dp"
             android:layout_height="56dp"
+            android:layout_weight="1"
             android:src="@drawable/ic_save"
             android:background="@drawable/button_background_green"/>
     </LinearLayout>
