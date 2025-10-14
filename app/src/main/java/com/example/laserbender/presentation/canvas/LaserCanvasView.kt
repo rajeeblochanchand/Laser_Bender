@@ -38,9 +38,21 @@ class LaserCanvasView @JvmOverloads constructor(
 
     // Paint objects
     private val laserPaint = Paint().apply {
-        strokeWidth = 4f
+        strokeWidth = 2f
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
+        isAntiAlias = true
+    }
+
+    private val laserGlowPaint = Paint().apply {
+        strokeWidth = 6f
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        isAntiAlias = true
+    }
+
+    private val iconGlowPaint = Paint().apply {
+        style = Paint.Style.FILL
         isAntiAlias = true
     }
 
@@ -97,6 +109,8 @@ class LaserCanvasView @JvmOverloads constructor(
 
     init {
         setBackgroundColor(Color.parseColor("#1a1a2e"))
+        laserGlowPaint.maskFilter = BlurMaskFilter(8f, BlurMaskFilter.Blur.NORMAL)
+        iconGlowPaint.maskFilter = BlurMaskFilter(12f, BlurMaskFilter.Blur.NORMAL)
     }
 
     fun setOnSelectionChangedListener(listener: (Boolean, Boolean) -> Unit) {
@@ -191,6 +205,9 @@ class LaserCanvasView @JvmOverloads constructor(
                 light, mirrors, flags, width.toFloat(), height.toFloat()
             )
             for (segment in segments) {
+                laserGlowPaint.color = segment.color
+                laserGlowPaint.alpha = 100 // Subtle glow
+                canvas.drawLine(segment.start.x, segment.start.y, segment.end.x, segment.end.y, laserGlowPaint)
                 laserPaint.color = segment.color
                 canvas.drawLine(segment.start.x, segment.start.y, segment.end.x, segment.end.y, laserPaint)
             }
@@ -240,6 +257,11 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private fun drawLightSource(canvas: Canvas, light: LightSource) {
+        // Draw the glow first
+        iconGlowPaint.color = light.color
+        iconGlowPaint.alpha = 150 // Subtle glow
+        canvas.drawCircle(light.position.x, light.position.y, 18f, iconGlowPaint)
+
         // Draw a small circle for the light source
         iconPaint.color = light.color
         canvas.drawCircle(light.position.x, light.position.y, 15f, iconPaint)
