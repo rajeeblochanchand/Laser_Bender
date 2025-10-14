@@ -346,7 +346,7 @@ class LaserCanvasView @JvmOverloads constructor(
             }
         }
         selectedFlag?.let {
-            if (distance(x, y, it.position.x, it.position.y) < 6.0f) {
+            if (distance(x, y, it.position.x, it.position.y) < 60f) {
                 isDragging = true
                 return
             }
