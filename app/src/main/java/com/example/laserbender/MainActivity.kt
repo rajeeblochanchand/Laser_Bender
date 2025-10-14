@@ -51,8 +51,8 @@ class MainActivity : AppCompatActivity() {
 
         // Set up selection listener
         laserCanvas.setOnSelectionChangedListener { hasSelection, isLightSource ->
-            btnDelete.visibility = if (hasSelection) View.VISIBLE else View.GONE
-            btnChangeColor.visibility = if (isLightSource) View.VISIBLE else View.GONE
+            btnDelete.visibility = if (hasSelection) View.VISIBLE else View.INVISIBLE
+            btnChangeColor.visibility = if (isLightSource) View.VISIBLE else View.INVISIBLE
         }
     }
 
