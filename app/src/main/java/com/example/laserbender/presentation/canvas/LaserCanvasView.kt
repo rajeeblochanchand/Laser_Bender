@@ -38,7 +38,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
     // Paint objects
     private val laserPaint = Paint().apply {
-        strokeWidth = 6f
+        strokeWidth = 2f
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         isAntiAlias = true
@@ -52,6 +52,11 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private val iconGlowPaint = Paint().apply {
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+
+    private val edgeGlowPaint = Paint().apply {
         style = Paint.Style.FILL
         isAntiAlias = true
     }
@@ -111,6 +116,7 @@ class LaserCanvasView @JvmOverloads constructor(
         setBackgroundColor(Color.parseColor("#1a1a2e"))
         laserGlowPaint.maskFilter = BlurMaskFilter(8f, BlurMaskFilter.Blur.NORMAL)
         iconGlowPaint.maskFilter = BlurMaskFilter(12f, BlurMaskFilter.Blur.NORMAL)
+        edgeGlowPaint.maskFilter = BlurMaskFilter(15f, BlurMaskFilter.Blur.NORMAL)
     }
 
     fun setOnSelectionChangedListener(listener: (Boolean, Boolean) -> Unit) {
@@ -201,15 +207,21 @@ class LaserCanvasView @JvmOverloads constructor(
 
         // Draw laser beams first
         for (light in lights) {
-            val segments = RayTracer.traceLightRay(
+            val result = RayTracer.traceLightRay(
                 light, mirrors, flags, width.toFloat(), height.toFloat()
             )
-            for (segment in segments) {
+            for (segment in result.segments) {
                 laserGlowPaint.color = segment.color
                 laserGlowPaint.alpha = 100 // Subtle glow
                 canvas.drawLine(segment.start.x, segment.start.y, segment.end.x, segment.end.y, laserGlowPaint)
                 laserPaint.color = segment.color
                 canvas.drawLine(segment.start.x, segment.start.y, segment.end.x, segment.end.y, laserPaint)
+            }
+
+            for (hit in result.edgeHits) {
+                edgeGlowPaint.color = hit.color
+                edgeGlowPaint.alpha = 150 // Subtle glow
+                canvas.drawCircle(hit.point.x, hit.point.y, 20f, edgeGlowPaint)
             }
         }
 
@@ -260,7 +272,7 @@ class LaserCanvasView @JvmOverloads constructor(
         // Draw the glow first
         iconGlowPaint.color = light.color
         iconGlowPaint.alpha = 150 // Subtle glow
-        canvas.drawCircle(light.position.x, light.position.y, 19f, iconGlowPaint)
+        canvas.drawCircle(light.position.x, light.position.y, 22f, iconGlowPaint)
 
         // Draw a small circle for the light source
         iconPaint.color = light.color

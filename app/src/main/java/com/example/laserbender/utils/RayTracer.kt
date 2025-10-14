@@ -21,6 +21,16 @@ object RayTracer {
         val flag: Flag? = null
     )
 
+    data class EdgeHit(
+        val point: PointF,
+        val color: Int
+    )
+
+    data class TraceResult(
+        val segments: List<RaySegment>,
+        val edgeHits: List<EdgeHit>
+    )
+
     fun traceLightRay(
         light: LightSource,
         mirrors: List<Mirror>,
@@ -28,8 +38,9 @@ object RayTracer {
         canvasWidth: Float,
         canvasHeight: Float,
         maxReflections: Int = 20
-    ): List<RaySegment> {
+    ): TraceResult {
         val segments = mutableListOf<RaySegment>()
+        val edgeHits = mutableListOf<EdgeHit>()
         var currentPos = light.position
         var currentDir = light.getDirection()
         var currentColor = light.color
@@ -40,6 +51,7 @@ object RayTracer {
             if (intersection == null) {
                 val edgePoint = findCanvasEdgeIntersection(currentPos, currentDir, canvasWidth, canvasHeight)
                 segments.add(RaySegment(currentPos, edgePoint, currentColor))
+                edgeHits.add(EdgeHit(edgePoint, currentColor))
                 break
             }
 
@@ -57,7 +69,7 @@ object RayTracer {
             }
         }
 
-        return segments
+        return TraceResult(segments, edgeHits)
     }
 
     private fun findNearestIntersection(
