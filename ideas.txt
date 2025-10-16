@@ -1,7 +1,6 @@
 * Implement zoom feature.
 * When saving zoom should not be saved with artwork.
-* Puzzle game to point light ray in appropriate directon.
+* Puzzle game to point light ray in appropriate direction.
 * Curved Mirror
 
 Implemented zoom feature
-Issue Created with the Gizmo showing after the item is deselected and options disapper

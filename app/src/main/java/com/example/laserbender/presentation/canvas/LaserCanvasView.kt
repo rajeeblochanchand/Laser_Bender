@@ -320,6 +320,7 @@ class LaserCanvasView @JvmOverloads constructor(
         selectedMirror = null
         selectedFlag = null
         onSelectionChanged?.invoke(false, false)
+        invalidate()
     }
 
     private fun notifySelectionChanged() {
