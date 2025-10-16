@@ -4,3 +4,4 @@
 * Curved Mirror
 
 Implemented zoom feature
+Issue Created with the Gizmo showing after the item is deselected and options disapper
