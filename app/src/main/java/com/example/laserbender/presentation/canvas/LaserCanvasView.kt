@@ -401,7 +401,7 @@ class LaserCanvasView @JvmOverloads constructor(
         canvas.drawCircle(center.x, center.y, radius, gizmoPaint)
 
         // Draw rotation handle
-        val handleDistance = radius + 15f
+        val handleDistance = radius + 35f
         val handleAngle = Math.toRadians(angle.toDouble())
         val handleX = center.x + handleDistance * Math.cos(handleAngle).toFloat()
         val handleY = center.y + handleDistance * Math.sin(handleAngle).toFloat()
@@ -415,7 +415,7 @@ class LaserCanvasView @JvmOverloads constructor(
             style = Paint.Style.FILL
             isAntiAlias = true
         }
-        canvas.drawCircle(handleX, handleY, 18f, handlePaint)
+        canvas.drawCircle(handleX, handleY, 25f, handlePaint)
 
         // Draw handle outline
         val handleOutlinePaint = Paint().apply {
@@ -424,7 +424,7 @@ class LaserCanvasView @JvmOverloads constructor(
             style = Paint.Style.STROKE
             isAntiAlias = true
         }
-        canvas.drawCircle(handleX, handleY, 18f, handleOutlinePaint)
+        canvas.drawCircle(handleX, handleY, 25f, handleOutlinePaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -582,12 +582,12 @@ class LaserCanvasView @JvmOverloads constructor(
     private fun isOnRotationHandle(
         x: Float, y: Float, center: PointF, radius: Float, angle: Float
     ): Boolean {
-        val handleDistance = radius + 15f
+        val handleDistance = radius + 35f
         val handleAngle = Math.toRadians(angle.toDouble())
         val handleX = center.x + handleDistance * Math.cos(handleAngle).toFloat()
         val handleY = center.y + handleDistance * Math.sin(handleAngle).toFloat()
 
-        return distance(x, y, handleX, handleY) < 30f
+        return distance(x, y, handleX, handleY) < 45f
     }
 
     private fun distance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
