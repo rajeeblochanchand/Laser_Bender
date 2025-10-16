@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnUndo: ImageButton
     private lateinit var btnRedo: ImageButton
     private lateinit var btnResetView: ImageButton
+    private lateinit var btnLockView: ImageButton
     private lateinit var tvZoomLevel: TextView
     private lateinit var buttonContainer: LinearLayout
 
@@ -58,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         btnUndo = findViewById(R.id.btnUndo)
         btnRedo = findViewById(R.id.btnRedo)
         btnResetView = findViewById(R.id.btnResetView)
+        btnLockView = findViewById(R.id.btnLockView)
         tvZoomLevel = findViewById(R.id.tvZoomLevel)
 
         setupButtons()
@@ -85,6 +87,18 @@ class MainActivity : AppCompatActivity() {
         btnUndo.setOnClickListener { laserCanvas.undo() }
         btnRedo.setOnClickListener { laserCanvas.redo() }
         btnResetView.setOnClickListener { laserCanvas.resetView() }
+        btnLockView.setOnClickListener { 
+            val isLocked = laserCanvas.toggleViewLock()
+            if (isLocked) {
+                btnLockView.setImageResource(R.drawable.ic_lock)
+                btnResetView.isEnabled = false
+                btnResetView.alpha = 0.5f
+            } else {
+                btnLockView.setImageResource(R.drawable.ic_lock_open)
+                btnResetView.isEnabled = true
+                btnResetView.alpha = 1.0f
+            }
+        }
 
         btnSave.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

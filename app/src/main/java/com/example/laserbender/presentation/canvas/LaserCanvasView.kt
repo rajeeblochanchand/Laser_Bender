@@ -52,6 +52,7 @@ class LaserCanvasView @JvmOverloads constructor(
     private var scaleFactor = 1f
     private var translationX = 0f
     private var translationY = 0f
+    private var isViewLocked = false
     private val scaleGestureDetector: ScaleGestureDetector
 
     // Paint objects
@@ -180,6 +181,11 @@ class LaserCanvasView @JvmOverloads constructor(
         translationY = 0f
         invalidate()
         onZoomChanged?.invoke(scaleFactor)
+    }
+
+    fun toggleViewLock(): Boolean {
+        isViewLocked = !isViewLocked
+        return isViewLocked
     }
 
     fun addLight() {
@@ -508,7 +514,9 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
+        if (!isViewLocked) {
+            scaleGestureDetector.onTouchEvent(event)
+        }
 
         val x = (event.x - translationX) / scaleFactor
         val y = (event.y - translationY) / scaleFactor
@@ -550,7 +558,9 @@ class LaserCanvasView @JvmOverloads constructor(
         }
 
         // If no object is selected, start panning
-        isPanning = true
+        if (!isViewLocked) {
+            isPanning = true
+        }
     }
 
     private fun handleTouchMove(dx: Float, dy: Float) {
@@ -564,7 +574,7 @@ class LaserCanvasView @JvmOverloads constructor(
             val angle = Math.toDegrees(atan2((lastTouchY - pos.y).toDouble(), (lastTouchX - pos.x).toDouble())).toFloat()
             setSelectedObjectAngle(angle)
             invalidate()
-        } else if (isPanning) {
+        } else if (isPanning && !isViewLocked) {
             translationX += dx * scaleFactor
             translationY += dy * scaleFactor
             invalidate()
@@ -640,6 +650,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
+            if(isViewLocked) return false
             scaleFactor *= detector.scaleFactor
             scaleFactor = Math.max(1.0f, Math.min(scaleFactor, 5.0f))
 
