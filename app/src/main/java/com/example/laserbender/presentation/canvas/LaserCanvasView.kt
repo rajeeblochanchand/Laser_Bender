@@ -419,16 +419,15 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private fun drawGrid(canvas: Canvas) {
-        val gridSize = 50f
-        val majorGridSize = 250f
+        val gridSize = 25f
 
         for (i in 1 until (width / gridSize).toInt()) {
-            val paint = if (i % 5 == 0) majorGridPaint else gridPaint
+            val paint = if (i % 10 == 0) majorGridPaint else gridPaint
             canvas.drawLine(i * gridSize, 0f, i * gridSize, height.toFloat(), paint)
         }
 
         for (i in 1 until (height / gridSize).toInt()) {
-            val paint = if (i % 5 == 0) majorGridPaint else gridPaint
+            val paint = if (i % 10 == 0) majorGridPaint else gridPaint
             canvas.drawLine(0f, i * gridSize, width.toFloat(), i * gridSize, paint)
         }
     }
