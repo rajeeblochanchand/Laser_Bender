@@ -4,12 +4,12 @@ import android.graphics.PointF
 import java.util.UUID
 
 data class Mirror(
-    val id: String = UUID.randomUUID().toString(),
-    var position: PointF = PointF(0f, 0f),
+    override val id: String = UUID.randomUUID().toString(),
+    override var position: PointF = PointF(0f, 0f),
     var angle: Float = 0f, // Angle in degrees
     var length: Float = 150f, // Length of the mirror
-    var isSelected: Boolean = false
-) {
+    override var isSelected: Boolean = false
+) : Selectable {
     // Get the two endpoints of the mirror
     fun getEndpoints(): Pair<PointF, PointF> {
         val radians = Math.toRadians(angle.toDouble())

@@ -10,6 +10,7 @@ import android.view.View
 import com.example.laserbender.data.model.Flag
 import com.example.laserbender.data.model.LightSource
 import com.example.laserbender.data.model.Mirror
+import com.example.laserbender.data.model.Selectable
 import com.example.laserbender.utils.RayTracer
 import java.util.Stack
 import kotlin.math.atan2
@@ -41,6 +42,8 @@ class LaserCanvasView @JvmOverloads constructor(
 
     private var lastTouchX = 0f
     private var lastTouchY = 0f
+    private var dragStartX = 0f
+    private var dragStartY = 0f
 
     private var onSelectionChanged: ((Boolean, Boolean) -> Unit)? = null
     private var onHistoryChanged: (() -> Unit)? = null
@@ -54,6 +57,8 @@ class LaserCanvasView @JvmOverloads constructor(
     private var translationY = 0f
     private var isViewLocked = false
     private val scaleGestureDetector: ScaleGestureDetector
+
+    enum class Trigger { ADD, DELETE, MOVE, ROTATE, COLOR_CHANGE, INITIAL }
 
     // Paint objects
     private val laserPaint = Paint().apply {
@@ -160,7 +165,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
         scaleGestureDetector = ScaleGestureDetector(context, ScaleListener())
 
-        saveState(isInitialState = true)
+        saveState(Trigger.INITIAL)
     }
 
     fun setOnSelectionChangedListener(listener: (Boolean, Boolean) -> Unit) {
@@ -191,21 +196,21 @@ class LaserCanvasView @JvmOverloads constructor(
     fun addLight() {
         val pos = findNextAvailablePosition(screenToWorld(width / 2f, height / 2f))
         lights.add(LightSource(position = pos))
-        saveState()
+        saveState(Trigger.ADD)
         invalidateAndNotifyHistory()
     }
 
     fun addMirror() {
         val pos = findNextAvailablePosition(screenToWorld(width / 2f, height / 2f))
         mirrors.add(Mirror(position = pos))
-        saveState()
+        saveState(Trigger.ADD)
         invalidateAndNotifyHistory()
     }
 
     fun addFlag() {
         val pos = findNextAvailablePosition(screenToWorld(width / 2f, height / 2f))
         flags.add(Flag(position = pos))
-        saveState()
+        saveState(Trigger.ADD)
         invalidateAndNotifyHistory()
     }
 
@@ -244,14 +249,14 @@ class LaserCanvasView @JvmOverloads constructor(
         selectedMirror?.let { mirrors.remove(it) }
         selectedFlag?.let { flags.remove(it) }
         clearSelection()
-        saveState()
+        saveState(Trigger.DELETE)
         invalidateAndNotifyHistory()
     }
 
     fun changeSelectedLightColor(color: Int) {
         selectedLight?.let {
             it.color = color
-            saveState()
+            saveState(Trigger.COLOR_CHANGE)
             invalidateAndNotifyHistory()
         }
     }
@@ -279,13 +284,18 @@ class LaserCanvasView @JvmOverloads constructor(
 
     fun canRedo(): Boolean = redoStack.isNotEmpty()
 
-    private fun saveState(isInitialState: Boolean = false) {
-        if (!isInitialState && undoStack.size >= 20) {
+    private fun saveState(trigger: Trigger, start: PointF? = null, end: PointF? = null) {
+        if (trigger != Trigger.INITIAL && undoStack.size >= 20) {
             undoStack.removeAt(0)
         }
         undoStack.push(CanvasState(lights, mirrors, flags).deepCopy())
-        if (!isInitialState) redoStack.clear()
-        Log.d(TAG, "State Saved: Undo stack size = ${undoStack.size}, Redo stack size = ${redoStack.size}")
+        if (trigger != Trigger.INITIAL) redoStack.clear()
+        
+        var logMsg = "State Saved: [${trigger.name}] Undo = ${undoStack.size}, Redo = ${redoStack.size}"
+        if (trigger == Trigger.MOVE && start != null && end != null) {
+            logMsg += ", Start: (${start.x}, ${start.y}), End: (${end.x}, ${end.y})"
+        }
+        Log.d(TAG, logMsg)
     }
 
     private fun restoreState(state: CanvasState) {
@@ -525,18 +535,22 @@ class LaserCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 lastTouchX = x
                 lastTouchY = y
+                dragStartX = getSelectedObjectPosition().x
+                dragStartY = getSelectedObjectPosition().y
                 handleTouchDown(x, y)
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = x - lastTouchX
                 val dy = y - lastTouchY
-                handleTouchMove(dx, dy)
+                handleTouchMove(x, y, dx, dy)
                 lastTouchX = x
                 lastTouchY = y
             }
             MotionEvent.ACTION_UP -> {
-                if (isDragging || isRotating) {
-                    saveState()
+                if (isDragging) {
+                    saveState(Trigger.MOVE, PointF(dragStartX, dragStartY), getSelectedObjectPosition())
+                } else if(isRotating) {
+                    saveState(Trigger.ROTATE)
                 }
                 isDragging = false
                 isRotating = false
@@ -547,23 +561,36 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private fun handleTouchDown(x: Float, y: Float) {
+        // Check if we are touching the rotation handle of an already selected object
         if (isAnyObjectSelected() && isOnRotationHandle(x, y, getSelectedObjectPosition(), 60f, getSelectedObjectAngle())) {
             isRotating = true
             return
         }
 
-        if (selectObjectAt(x, y)) {
-            isDragging = true
+        val objectToSelect = findObjectAt(x, y)
+        if (objectToSelect != null) {
+            if (!objectToSelect.isSelected) {
+                clearSelection()
+                selectObject(objectToSelect)
+            }
+            // Don't set isDragging here, wait for a move gesture
             return
         }
-
-        // If no object is selected, start panning
+        
+        // If we touched an empty area, clear the selection and start panning
+        if (isAnyObjectSelected()) {
+            clearSelection()
+        }
         if (!isViewLocked) {
             isPanning = true
         }
     }
 
-    private fun handleTouchMove(dx: Float, dy: Float) {
+    private fun handleTouchMove(x: Float, y: Float, dx: Float, dy: Float) {
+        if (!isRotating && !isPanning && isAnyObjectSelected()) {
+            isDragging = true
+        }
+        
         if (isDragging) {
             selectedLight?.position?.offset(dx, dy)
             selectedMirror?.position?.offset(dx, dy)
@@ -571,7 +598,7 @@ class LaserCanvasView @JvmOverloads constructor(
             invalidate()
         } else if (isRotating) {
             val pos = getSelectedObjectPosition()
-            val angle = Math.toDegrees(atan2((lastTouchY - pos.y).toDouble(), (lastTouchX - pos.x).toDouble())).toFloat()
+            val angle = Math.toDegrees(atan2((y - pos.y).toDouble(), (x - pos.x).toDouble())).toFloat()
             setSelectedObjectAngle(angle)
             invalidate()
         } else if (isPanning && !isViewLocked) {
@@ -601,39 +628,42 @@ class LaserCanvasView @JvmOverloads constructor(
         return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
     }
 
-    private fun selectObjectAt(x: Float, y: Float): Boolean {
-        clearSelection()
-
+    private fun findObjectAt(x: Float, y: Float): Selectable? {
         for (light in lights.reversed()) {
             if (distance(x, y, light.position.x, light.position.y) < 30f) {
-                light.isSelected = true
-                selectedLight = light
-                notifySelectionChanged()
-                invalidate()
-                return true
+                return light
             }
         }
-
         for (mirror in mirrors.reversed()) {
             if (distanceToLineSegment(PointF(x, y), mirror.getEndpoints()) < 40f) {
-                mirror.isSelected = true
-                selectedMirror = mirror
-                notifySelectionChanged()
-                invalidate()
-                return true
+                return mirror
             }
         }
-
         for (flag in flags.reversed()) {
             if (distanceToLineSegment(PointF(x, y), flag.getEndpoints()) < 40f) {
-                flag.isSelected = true
-                selectedFlag = flag
-                notifySelectionChanged()
-                invalidate()
-                return true
+                return flag
             }
         }
-        return false
+        return null
+    }
+
+    private fun selectObject(obj: Selectable) {
+        when (obj) {
+            is LightSource -> {
+                obj.isSelected = true
+                selectedLight = obj
+            }
+            is Mirror -> {
+                obj.isSelected = true
+                selectedMirror = obj
+            }
+            is Flag -> {
+                obj.isSelected = true
+                selectedFlag = obj
+            }
+        }
+        notifySelectionChanged()
+        invalidate()
     }
 
     private fun isAnyObjectSelected(): Boolean = selectedLight != null || selectedMirror != null || selectedFlag != null
