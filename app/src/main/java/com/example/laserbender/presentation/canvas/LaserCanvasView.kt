@@ -44,6 +44,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
     private var onSelectionChanged: ((Boolean, Boolean) -> Unit)? = null
     private var onHistoryChanged: (() -> Unit)? = null
+    private var onZoomChanged: ((Float) -> Unit)? = null
 
     private val TAG = "LaserCanvasView"
 
@@ -167,6 +168,18 @@ class LaserCanvasView @JvmOverloads constructor(
 
     fun setOnHistoryChangedListener(listener: () -> Unit) {
         onHistoryChanged = listener
+    }
+
+    fun setOnZoomChangedListener(listener: (Float) -> Unit) {
+        onZoomChanged = listener
+    }
+
+    fun resetView() {
+        scaleFactor = 1f
+        translationX = 0f
+        translationY = 0f
+        invalidate()
+        onZoomChanged?.invoke(scaleFactor)
     }
 
     fun addLight() {
@@ -555,6 +568,7 @@ class LaserCanvasView @JvmOverloads constructor(
             translationX += dx * scaleFactor
             translationY += dy * scaleFactor
             invalidate()
+            onZoomChanged?.invoke(scaleFactor)
         }
     }
 
@@ -633,6 +647,7 @@ class LaserCanvasView @JvmOverloads constructor(
             translationY = detector.focusY - (detector.focusY - translationY) * detector.scaleFactor
 
             invalidate()
+            onZoomChanged?.invoke(scaleFactor)
             return true
         }
     }

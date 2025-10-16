@@ -30,20 +30,49 @@
 
         <ImageButton
             android:id="@+id/btnUndo"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:padding="10dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:src="@drawable/ic_undo"
             android:background="@drawable/button_background_default"/>
 
         <ImageButton
             android:id="@+id/btnRedo"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:padding="10dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:src="@drawable/ic_redo"
             android:background="@drawable/button_background_default"
             android:layout_marginStart="8dp"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/zoomContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/rounded_transparent_background"
+        android:padding="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="16dp">
+
+        <TextView
+            android:id="@+id/tvZoomLevel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="8dp"
+            tools:text="100%"/>
+
+        <ImageButton
+            android:id="@+id/btnResetView"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_reset_view"
+            android:background="@drawable/button_background_default"/>
 
     </LinearLayout>
 
