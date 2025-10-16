@@ -17,6 +17,37 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <LinearLayout
+        android:id="@+id/undoRedoContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/rounded_transparent_background"
+        android:padding="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="48dp"
+        android:layout_marginStart="16dp">
+
+        <ImageButton
+            android:id="@+id/btnUndo"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_undo"
+            android:background="@drawable/button_background_default"/>
+
+        <ImageButton
+            android:id="@+id/btnRedo"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_redo"
+            android:background="@drawable/button_background_default"
+            android:layout_marginStart="8dp"/>
+
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/buttonContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -28,7 +59,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="24dp">
+        android:layout_marginBottom="32dp">
 
         <ImageButton
             android:id="@+id/btnAddLight"

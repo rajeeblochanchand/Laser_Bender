@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnDelete: ImageButton
     private lateinit var btnChangeColor: ImageButton
     private lateinit var btnSave: ImageButton
+    private lateinit var btnUndo: ImageButton
+    private lateinit var btnRedo: ImageButton
     private lateinit var buttonContainer: LinearLayout
 
     private var defaultColor: Int = Color.RED
@@ -49,6 +51,8 @@ class MainActivity : AppCompatActivity() {
         btnDelete = findViewById(R.id.btnDelete)
         btnChangeColor = findViewById(R.id.btnChangeColor)
         btnSave = findViewById(R.id.btnSave)
+        btnUndo = findViewById(R.id.btnUndo)
+        btnRedo = findViewById(R.id.btnRedo)
 
         setupButtons()
 
@@ -56,6 +60,10 @@ class MainActivity : AppCompatActivity() {
         laserCanvas.setOnSelectionChangedListener { hasSelection, isLightSource ->
             btnDelete.visibility = if (hasSelection) View.VISIBLE else View.INVISIBLE
             btnChangeColor.visibility = if (isLightSource) View.VISIBLE else View.INVISIBLE
+        }
+
+        laserCanvas.setOnHistoryChangedListener {
+            updateUndoRedoButtons()
         }
 
         buttonContainer.post {
@@ -67,6 +75,7 @@ class MainActivity : AppCompatActivity() {
                 button.layoutParams = params
             }
         }
+        updateUndoRedoButtons()
     }
 
     private fun setupButtons() {
@@ -101,6 +110,21 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        btnUndo.setOnClickListener {
+            laserCanvas.undo()
+        }
+
+        btnRedo.setOnClickListener {
+            laserCanvas.redo()
+        }
+    }
+
+    private fun updateUndoRedoButtons() {
+        btnUndo.isEnabled = laserCanvas.canUndo()
+        btnRedo.isEnabled = laserCanvas.canRedo()
+        btnUndo.alpha = if (laserCanvas.canUndo()) 1.0f else 0.5f
+        btnRedo.alpha = if (laserCanvas.canRedo()) 1.0f else 0.5f
     }
 
     private fun openColorPicker() {

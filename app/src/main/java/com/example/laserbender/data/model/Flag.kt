@@ -25,12 +25,15 @@ data class Flag(
     }
 
     // Get normal vector (perpendicular to flag surface)
-    // This points AWAY from the blocking (black) side, toward the white side
     fun getNormal(): PointF {
         val radians = Math.toRadians(angle.toDouble() + 90)
         return PointF(
             Math.cos(radians).toFloat(),
             Math.sin(radians).toFloat()
         )
+    }
+
+    fun deepCopy(): Flag {
+        return this.copy(position = PointF(this.position.x, this.position.y))
     }
 }

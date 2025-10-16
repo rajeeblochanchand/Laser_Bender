@@ -25,13 +25,15 @@ data class Mirror(
     }
 
     // Get normal vector (perpendicular to mirror surface)
-    // This should point AWAY from the reflective (cyan) side
-    // So the white (non-reflective) side is in the direction of the normal
     fun getNormal(): PointF {
         val radians = Math.toRadians(angle.toDouble() + 90)
         return PointF(
             Math.cos(radians).toFloat(),
             Math.sin(radians).toFloat()
         )
+    }
+
+    fun deepCopy(): Mirror {
+        return this.copy(position = PointF(this.position.x, this.position.y))
     }
 }

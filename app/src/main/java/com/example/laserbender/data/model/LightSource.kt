@@ -19,4 +19,8 @@ data class LightSource(
             Math.sin(radians).toFloat()
         )
     }
+
+    fun deepCopy(): LightSource {
+        return this.copy(position = PointF(this.position.x, this.position.y))
+    }
 }

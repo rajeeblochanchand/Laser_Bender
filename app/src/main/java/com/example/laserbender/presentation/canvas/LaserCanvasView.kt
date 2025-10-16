@@ -3,12 +3,14 @@ package com.example.laserbender.presentation.canvas
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import com.example.laserbender.data.model.Flag
 import com.example.laserbender.data.model.LightSource
 import com.example.laserbender.data.model.Mirror
 import com.example.laserbender.utils.RayTracer
+import java.util.Stack
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -21,9 +23,12 @@ class LaserCanvasView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private val lights = mutableListOf<LightSource>()
-    private val mirrors = mutableListOf<Mirror>()
-    private val flags = mutableListOf<Flag>()
+    private var lights = mutableListOf<LightSource>()
+    private var mirrors = mutableListOf<Mirror>()
+    private var flags = mutableListOf<Flag>()
+
+    private val undoStack = Stack<CanvasState>()
+    private val redoStack = Stack<CanvasState>()
 
     private var selectedLight: LightSource? = null
     private var selectedMirror: Mirror? = null
@@ -35,6 +40,9 @@ class LaserCanvasView @JvmOverloads constructor(
     private var lastTouchY = 0f
 
     private var onSelectionChanged: ((Boolean, Boolean) -> Unit)? = null
+    private var onHistoryChanged: (() -> Unit)? = null
+
+    private val TAG = "LaserCanvasView"
 
     // Paint objects
     private val laserPaint = Paint().apply {
@@ -117,28 +125,36 @@ class LaserCanvasView @JvmOverloads constructor(
         laserGlowPaint.maskFilter = BlurMaskFilter(8f, BlurMaskFilter.Blur.NORMAL)
         iconGlowPaint.maskFilter = BlurMaskFilter(12f, BlurMaskFilter.Blur.NORMAL)
         edgeGlowPaint.maskFilter = BlurMaskFilter(15f, BlurMaskFilter.Blur.NORMAL)
+        saveState(isInitialState = true)
     }
 
     fun setOnSelectionChangedListener(listener: (Boolean, Boolean) -> Unit) {
         onSelectionChanged = listener
     }
 
+    fun setOnHistoryChangedListener(listener: () -> Unit) {
+        onHistoryChanged = listener
+    }
+
     fun addLight() {
         val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
         lights.add(LightSource(position = pos))
-        invalidate()
+        saveState()
+        invalidateAndNotifyHistory()
     }
 
     fun addMirror() {
         val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
         mirrors.add(Mirror(position = pos))
-        invalidate()
+        saveState()
+        invalidateAndNotifyHistory()
     }
 
     fun addFlag() {
         val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
         flags.add(Flag(position = pos))
-        invalidate()
+        saveState()
+        invalidateAndNotifyHistory()
     }
 
     private fun findNextAvailablePosition(initialPosition: PointF): PointF {
@@ -169,13 +185,70 @@ class LaserCanvasView @JvmOverloads constructor(
         selectedMirror?.let { mirrors.remove(it) }
         selectedFlag?.let { flags.remove(it) }
         clearSelection()
-        invalidate()
+        saveState()
+        invalidateAndNotifyHistory()
     }
 
     fun changeSelectedLightColor(color: Int) {
         selectedLight?.let {
             it.color = color
-            invalidate()
+            saveState()
+            invalidateAndNotifyHistory()
+        }
+    }
+
+    fun undo() {
+        if (canUndo()) {
+            redoStack.push(undoStack.pop().deepCopy())
+            restoreState(undoStack.peek())
+            Log.d(TAG, "Undo: Undo stack size = ${undoStack.size}, Redo stack size = ${redoStack.size}")
+            invalidateAndNotifyHistory()
+        }
+    }
+
+    fun redo() {
+        if (canRedo()) {
+            val stateToRestore = redoStack.pop()
+            undoStack.push(stateToRestore.deepCopy())
+            restoreState(stateToRestore)
+            Log.d(TAG, "Redo: Undo stack size = ${undoStack.size}, Redo stack size = ${redoStack.size}")
+            invalidateAndNotifyHistory()
+        }
+    }
+
+    fun canUndo(): Boolean = undoStack.size > 1
+
+    fun canRedo(): Boolean = redoStack.isNotEmpty()
+
+    private fun saveState(isInitialState: Boolean = false) {
+        if (!isInitialState && undoStack.size >= 20) {
+            undoStack.removeAt(0)
+        }
+        undoStack.push(CanvasState(lights, mirrors, flags).deepCopy())
+        if (!isInitialState) redoStack.clear()
+        Log.d(TAG, "State Saved: Undo stack size = ${undoStack.size}, Redo stack size = ${redoStack.size}")
+    }
+
+    private fun restoreState(state: CanvasState) {
+        val restoredState = state.deepCopy()
+        lights = restoredState.lights.toMutableList()
+        mirrors = restoredState.mirrors.toMutableList()
+        flags = restoredState.flags.toMutableList()
+        clearSelection()
+    }
+
+    private fun invalidateAndNotifyHistory() {
+        invalidate()
+        onHistoryChanged?.invoke()
+    }
+
+    data class CanvasState(val lights: List<LightSource>, val mirrors: List<Mirror>, val flags: List<Flag>) {
+        fun deepCopy(): CanvasState {
+            return CanvasState(
+                lights.map { it.deepCopy() },
+                mirrors.map { it.deepCopy() },
+                flags.map { it.deepCopy() }
+            )
         }
     }
 
@@ -221,7 +294,18 @@ class LaserCanvasView @JvmOverloads constructor(
             for (hit in result.edgeHits) {
                 edgeGlowPaint.color = hit.color
                 edgeGlowPaint.alpha = 150 // Subtle glow
-                canvas.drawCircle(hit.point.x, hit.point.y, 20f, edgeGlowPaint)
+                val x = hit.point.x
+                val y = hit.point.y
+
+                val rect: RectF
+                if (x <= 1f || x >= width - 1f) {
+                    // Hit left or right edge, draw a vertically stretched ellipse
+                    rect = RectF(x - 10, y - 30, x + 10, y + 30)
+                } else {
+                    // Hit top or bottom edge, draw a horizontally stretched ellipse
+                    rect = RectF(x - 30, y - 10, x + 30, y + 10)
+                }
+                canvas.drawOval(rect, edgeGlowPaint)
             }
         }
 
@@ -317,9 +401,10 @@ class LaserCanvasView @JvmOverloads constructor(
         canvas.drawCircle(center.x, center.y, radius, gizmoPaint)
 
         // Draw rotation handle
+        val handleDistance = radius + 15f
         val handleAngle = Math.toRadians(angle.toDouble())
-        val handleX = center.x + radius * Math.cos(handleAngle).toFloat()
-        val handleY = center.y + radius * Math.sin(handleAngle).toFloat()
+        val handleX = center.x + handleDistance * Math.cos(handleAngle).toFloat()
+        val handleY = center.y + handleDistance * Math.sin(handleAngle).toFloat()
 
         // Draw line to handle
         canvas.drawLine(center.x, center.y, handleX, handleY, gizmoPaint)
@@ -330,7 +415,7 @@ class LaserCanvasView @JvmOverloads constructor(
             style = Paint.Style.FILL
             isAntiAlias = true
         }
-        canvas.drawCircle(handleX, handleY, 12f, handlePaint)
+        canvas.drawCircle(handleX, handleY, 18f, handlePaint)
 
         // Draw handle outline
         val handleOutlinePaint = Paint().apply {
@@ -339,7 +424,7 @@ class LaserCanvasView @JvmOverloads constructor(
             style = Paint.Style.STROKE
             isAntiAlias = true
         }
-        canvas.drawCircle(handleX, handleY, 12f, handleOutlinePaint)
+        canvas.drawCircle(handleX, handleY, 18f, handleOutlinePaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -362,6 +447,9 @@ class LaserCanvasView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_UP -> {
+                if (isDragging || isRotating) {
+                    saveState()
+                }
                 isDragging = false
                 isRotating = false
                 return true
@@ -494,11 +582,12 @@ class LaserCanvasView @JvmOverloads constructor(
     private fun isOnRotationHandle(
         x: Float, y: Float, center: PointF, radius: Float, angle: Float
     ): Boolean {
+        val handleDistance = radius + 15f
         val handleAngle = Math.toRadians(angle.toDouble())
-        val handleX = center.x + radius * Math.cos(handleAngle).toFloat()
-        val handleY = center.y + radius * Math.sin(handleAngle).toFloat()
+        val handleX = center.x + handleDistance * Math.cos(handleAngle).toFloat()
+        val handleY = center.y + handleDistance * Math.sin(handleAngle).toFloat()
 
-        return distance(x, y, handleX, handleY) < 20f
+        return distance(x, y, handleX, handleY) < 30f
     }
 
     private fun distance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
