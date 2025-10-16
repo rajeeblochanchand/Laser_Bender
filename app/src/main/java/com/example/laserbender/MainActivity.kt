@@ -11,6 +11,7 @@ import android.provider.MediaStore
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -18,6 +19,7 @@ import androidx.core.content.ContextCompat
 import com.example.laserbender.presentation.canvas.LaserCanvasView
 import yuku.ambilwarna.AmbilWarnaDialog
 import java.io.OutputStream
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSave: ImageButton
     private lateinit var btnUndo: ImageButton
     private lateinit var btnRedo: ImageButton
+    private lateinit var btnResetView: ImageButton
+    private lateinit var tvZoomLevel: TextView
     private lateinit var buttonContainer: LinearLayout
 
     private var defaultColor: Int = Color.RED
@@ -53,18 +57,11 @@ class MainActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnSave)
         btnUndo = findViewById(R.id.btnUndo)
         btnRedo = findViewById(R.id.btnRedo)
+        btnResetView = findViewById(R.id.btnResetView)
+        tvZoomLevel = findViewById(R.id.tvZoomLevel)
 
         setupButtons()
-
-        // Set up selection listener
-        laserCanvas.setOnSelectionChangedListener { hasSelection, isLightSource ->
-            btnDelete.visibility = if (hasSelection) View.VISIBLE else View.INVISIBLE
-            btnChangeColor.visibility = if (isLightSource) View.VISIBLE else View.INVISIBLE
-        }
-
-        laserCanvas.setOnHistoryChangedListener {
-            updateUndoRedoButtons()
-        }
+        setupCanvasListeners()
 
         buttonContainer.post {
             val width = btnAddLight.width
@@ -76,28 +73,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
         updateUndoRedoButtons()
+        updateZoomLabel(1f)
     }
 
     private fun setupButtons() {
-        btnAddLight.setOnClickListener {
-            laserCanvas.addLight()
-        }
-
-        btnAddMirror.setOnClickListener {
-            laserCanvas.addMirror()
-        }
-
-        btnAddFlag.setOnClickListener {
-            laserCanvas.addFlag()
-        }
-
-        btnDelete.setOnClickListener {
-            laserCanvas.deleteSelected()
-        }
-
-        btnChangeColor.setOnClickListener {
-            openColorPicker()
-        }
+        btnAddLight.setOnClickListener { laserCanvas.addLight() }
+        btnAddMirror.setOnClickListener { laserCanvas.addMirror() }
+        btnAddFlag.setOnClickListener { laserCanvas.addFlag() }
+        btnDelete.setOnClickListener { laserCanvas.deleteSelected() }
+        btnChangeColor.setOnClickListener { openColorPicker() }
+        btnUndo.setOnClickListener { laserCanvas.undo() }
+        btnRedo.setOnClickListener { laserCanvas.redo() }
+        btnResetView.setOnClickListener { laserCanvas.resetView() }
 
         btnSave.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -110,13 +97,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
 
-        btnUndo.setOnClickListener {
-            laserCanvas.undo()
+    private fun setupCanvasListeners() {
+        laserCanvas.setOnSelectionChangedListener { hasSelection, isLightSource ->
+            btnDelete.visibility = if (hasSelection) View.VISIBLE else View.INVISIBLE
+            btnChangeColor.visibility = if (isLightSource) View.VISIBLE else View.INVISIBLE
         }
 
-        btnRedo.setOnClickListener {
-            laserCanvas.redo()
+        laserCanvas.setOnHistoryChangedListener {
+            updateUndoRedoButtons()
+        }
+
+        laserCanvas.setOnZoomChangedListener {
+            updateZoomLabel(it)
         }
     }
 
@@ -125,6 +119,10 @@ class MainActivity : AppCompatActivity() {
         btnRedo.isEnabled = laserCanvas.canRedo()
         btnUndo.alpha = if (laserCanvas.canUndo()) 1.0f else 0.5f
         btnRedo.alpha = if (laserCanvas.canRedo()) 1.0f else 0.5f
+    }
+
+    private fun updateZoomLabel(scale: Float) {
+        tvZoomLevel.text = String.format(Locale.getDefault(), "%.0f%%", scale * 100)
     }
 
     private fun openColorPicker() {
