@@ -52,6 +52,20 @@ class LaserCanvasView @JvmOverloads constructor(
         isAntiAlias = true
     }
 
+    private val gridPaint = Paint().apply {
+        color = Color.parseColor("#D934345c")
+        strokeWidth = 1f
+        style = Paint.Style.STROKE
+        isAntiAlias = true
+    }
+
+    private val majorGridPaint = Paint().apply {
+        color = Color.parseColor("#D934345c")
+        strokeWidth = 1.5f
+        style = Paint.Style.STROKE
+        isAntiAlias = true
+    }
+
     private val laserGlowPaint = Paint().apply {
         strokeWidth = 6f
         style = Paint.Style.STROKE
@@ -277,6 +291,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        drawGrid(canvas)
 
         // Draw laser beams first
         for (light in lights) {
@@ -349,6 +364,21 @@ class LaserCanvasView @JvmOverloads constructor(
             if (light.isSelected) {
                 drawGizmo(canvas, light.position, 60f, light.angle)
             }
+        }
+    }
+
+    private fun drawGrid(canvas: Canvas) {
+        val gridSize = 20f
+        val majorGridSize = 200f
+
+        for (i in 1 until (width / gridSize).toInt()) {
+            val paint = if (i % 10 == 0) majorGridPaint else gridPaint
+            canvas.drawLine(i * gridSize, 0f, i * gridSize, height.toFloat(), paint)
+        }
+
+        for (i in 1 until (height / gridSize).toInt()) {
+            val paint = if (i % 10 == 0) majorGridPaint else gridPaint
+            canvas.drawLine(0f, i * gridSize, width.toFloat(), i * gridSize, paint)
         }
     }
 
