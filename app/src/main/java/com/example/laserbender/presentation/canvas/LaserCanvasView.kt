@@ -5,6 +5,7 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import com.example.laserbender.data.model.Flag
 import com.example.laserbender.data.model.LightSource
@@ -36,6 +37,8 @@ class LaserCanvasView @JvmOverloads constructor(
 
     private var isDragging = false
     private var isRotating = false
+    private var isPanning = false
+
     private var lastTouchX = 0f
     private var lastTouchY = 0f
 
@@ -43,6 +46,12 @@ class LaserCanvasView @JvmOverloads constructor(
     private var onHistoryChanged: (() -> Unit)? = null
 
     private val TAG = "LaserCanvasView"
+
+    // Camera and Scaling
+    private var scaleFactor = 1f
+    private var translationX = 0f
+    private var translationY = 0f
+    private val scaleGestureDetector: ScaleGestureDetector
 
     // Paint objects
     private val laserPaint = Paint().apply {
@@ -61,9 +70,16 @@ class LaserCanvasView @JvmOverloads constructor(
 
     private val majorGridPaint = Paint().apply {
         color = Color.parseColor("#D934345c")
-        strokeWidth = 1.5f
+        strokeWidth = 2f
         style = Paint.Style.STROKE
         isAntiAlias = true
+    }
+
+    private val dottedBorderPaint = Paint().apply {
+        color = Color.parseColor("#80FFFFFF")
+        strokeWidth = 2f
+        style = Paint.Style.STROKE
+        pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
     }
 
     private val laserGlowPaint = Paint().apply {
@@ -139,6 +155,9 @@ class LaserCanvasView @JvmOverloads constructor(
         laserGlowPaint.maskFilter = BlurMaskFilter(8f, BlurMaskFilter.Blur.NORMAL)
         iconGlowPaint.maskFilter = BlurMaskFilter(12f, BlurMaskFilter.Blur.NORMAL)
         edgeGlowPaint.maskFilter = BlurMaskFilter(15f, BlurMaskFilter.Blur.NORMAL)
+
+        scaleGestureDetector = ScaleGestureDetector(context, ScaleListener())
+
         saveState(isInitialState = true)
     }
 
@@ -151,42 +170,49 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     fun addLight() {
-        val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
+        val pos = findNextAvailablePosition(screenToWorld(width / 2f, height / 2f))
         lights.add(LightSource(position = pos))
         saveState()
         invalidateAndNotifyHistory()
     }
 
     fun addMirror() {
-        val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
+        val pos = findNextAvailablePosition(screenToWorld(width / 2f, height / 2f))
         mirrors.add(Mirror(position = pos))
         saveState()
         invalidateAndNotifyHistory()
     }
 
     fun addFlag() {
-        val pos = findNextAvailablePosition(PointF(width / 2f, height / 2f))
+        val pos = findNextAvailablePosition(screenToWorld(width / 2f, height / 2f))
         flags.add(Flag(position = pos))
         saveState()
         invalidateAndNotifyHistory()
     }
 
     private fun findNextAvailablePosition(initialPosition: PointF): PointF {
+        var position = initialPosition.apply { 
+            x = x.coerceIn(0f, width.toFloat())
+            y = y.coerceIn(0f, height.toFloat())
+        }
         val radius = 80f // A bit more than the gizmo radius
-        if (!isPositionOccupied(initialPosition, radius)) {
-            return initialPosition
+        if (!isPositionOccupied(position, radius)) {
+            return position
         }
 
-        var candidate = initialPosition
         var counter = 0
-        while (isPositionOccupied(candidate, radius) && counter < 100) {
+        while (isPositionOccupied(position, radius) && counter < 100) {
             val angle = Random.nextFloat() * 2 * Math.PI
             val offsetX = radius * cos(angle).toFloat()
             val offsetY = radius * sin(angle).toFloat()
-            candidate = PointF(candidate.x + offsetX, candidate.y + offsetY)
+            position = PointF(position.x + offsetX, position.y + offsetY)
+            position.apply { 
+                x = x.coerceIn(0f, width.toFloat())
+                y = y.coerceIn(0f, height.toFloat())
+            }
             counter++
         }
-        return candidate
+        return position
     }
 
     private fun isPositionOccupied(position: PointF, radius: Float): Boolean {
@@ -291,6 +317,11 @@ class LaserCanvasView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        
+        canvas.save()
+        canvas.translate(translationX, translationY)
+        canvas.scale(scaleFactor, scaleFactor)
+        
         drawGrid(canvas)
 
         // Draw laser beams first
@@ -365,19 +396,25 @@ class LaserCanvasView @JvmOverloads constructor(
                 drawGizmo(canvas, light.position, 60f, light.angle)
             }
         }
+        
+        if (scaleFactor > 1.0f || translationX != 0f || translationY != 0f) {
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dottedBorderPaint)
+        }
+
+        canvas.restore()
     }
 
     private fun drawGrid(canvas: Canvas) {
-        val gridSize = 20f
-        val majorGridSize = 200f
+        val gridSize = 50f
+        val majorGridSize = 250f
 
         for (i in 1 until (width / gridSize).toInt()) {
-            val paint = if (i % 10 == 0) majorGridPaint else gridPaint
+            val paint = if (i % 5 == 0) majorGridPaint else gridPaint
             canvas.drawLine(i * gridSize, 0f, i * gridSize, height.toFloat(), paint)
         }
 
         for (i in 1 until (height / gridSize).toInt()) {
-            val paint = if (i % 10 == 0) majorGridPaint else gridPaint
+            val paint = if (i % 5 == 0) majorGridPaint else gridPaint
             canvas.drawLine(0f, i * gridSize, width.toFloat(), i * gridSize, paint)
         }
     }
@@ -458,155 +495,71 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val x = event.x
-        val y = event.y
+        scaleGestureDetector.onTouchEvent(event)
+
+        val x = (event.x - translationX) / scaleFactor
+        val y = (event.y - translationY) / scaleFactor
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                lastTouchX = x
+                lastTouchY = y
                 handleTouchDown(x, y)
-                lastTouchX = x
-                lastTouchY = y
-                return true
             }
-
             MotionEvent.ACTION_MOVE -> {
-                handleTouchMove(x, y)
+                val dx = x - lastTouchX
+                val dy = y - lastTouchY
+                handleTouchMove(dx, dy)
                 lastTouchX = x
                 lastTouchY = y
-                return true
             }
-
             MotionEvent.ACTION_UP -> {
                 if (isDragging || isRotating) {
                     saveState()
                 }
                 isDragging = false
                 isRotating = false
-                return true
+                isPanning = false
             }
         }
-
-        return super.onTouchEvent(event)
+        return true
     }
 
     private fun handleTouchDown(x: Float, y: Float) {
-        // Check if touched on rotation handle
-        selectedLight?.let {
-            if (isOnRotationHandle(x, y, it.position, 60f, it.angle)) {
-                isRotating = true
-                return
-            }
-        }
-        selectedMirror?.let {
-            if (isOnRotationHandle(x, y, it.position, 60f, it.angle)) {
-                isRotating = true
-                return
-            }
-        }
-        selectedFlag?.let {
-            if (isOnRotationHandle(x, y, it.position, 60f, it.angle)) {
-                isRotating = true
-                return
-            }
+        if (isAnyObjectSelected() && isOnRotationHandle(x, y, getSelectedObjectPosition(), 60f, getSelectedObjectAngle())) {
+            isRotating = true
+            return
         }
 
-        // Check if touched inside gizmo (for dragging)
-        selectedLight?.let {
-            if (distance(x, y, it.position.x, it.position.y) < 60f) {
-                isDragging = true
-                return
-            }
-        }
-        selectedMirror?.let {
-            if (distance(x, y, it.position.x, it.position.y) < 60f) {
-                isDragging = true
-                return
-            }
-        }
-        selectedFlag?.let {
-            if (distance(x, y, it.position.x, it.position.y) < 60f) {
-                isDragging = true
-                return
-            }
+        if (selectObjectAt(x, y)) {
+            isDragging = true
+            return
         }
 
-        // Try to select an object
-        clearSelection()
-
-        for (light in lights) {
-            if (distance(x, y, light.position.x, light.position.y) < 30f) {
-                light.isSelected = true
-                selectedLight = light
-                notifySelectionChanged()
-                invalidate()
-                return
-            }
-        }
-
-        for (mirror in mirrors) {
-            if (distanceToLineSegment(PointF(x, y), mirror.getEndpoints()) < 40f) {
-                mirror.isSelected = true
-                selectedMirror = mirror
-                notifySelectionChanged()
-                invalidate()
-                return
-            }
-        }
-
-        for (flag in flags) {
-            if (distanceToLineSegment(PointF(x, y), flag.getEndpoints()) < 40f) {
-                flag.isSelected = true
-                selectedFlag = flag
-                notifySelectionChanged()
-                invalidate()
-                return
-            }
-        }
-
-        invalidate()
+        // If no object is selected, start panning
+        isPanning = true
     }
 
-    private fun handleTouchMove(x: Float, y: Float) {
+    private fun handleTouchMove(dx: Float, dy: Float) {
         if (isDragging) {
-            val dx = x - lastTouchX
-            val dy = y - lastTouchY
-
-            selectedLight?.let {
-                it.position.x += dx
-                it.position.y += dy
-            }
-            selectedMirror?.let {
-                it.position.x += dx
-                it.position.y += dy
-            }
-            selectedFlag?.let {
-                it.position.x += dx
-                it.position.y += dy
-            }
-
+            selectedLight?.position?.offset(dx, dy)
+            selectedMirror?.position?.offset(dx, dy)
+            selectedFlag?.position?.offset(dx, dy)
             invalidate()
         } else if (isRotating) {
-            selectedLight?.let {
-                val angle = Math.toDegrees(
-                    atan2((y - it.position.y).toDouble(), (x - it.position.x).toDouble())
-                ).toFloat()
-                it.angle = angle
-            }
-            selectedMirror?.let {
-                val angle = Math.toDegrees(
-                    atan2((y - it.position.y).toDouble(), (x - it.position.x).toDouble())
-                ).toFloat()
-                it.angle = angle
-            }
-            selectedFlag?.let {
-                val angle = Math.toDegrees(
-                    atan2((y - it.position.y).toDouble(), (x - it.position.x).toDouble())
-                ).toFloat()
-                it.angle = angle
-            }
-
+            val pos = getSelectedObjectPosition()
+            val angle = Math.toDegrees(atan2((lastTouchY - pos.y).toDouble(), (lastTouchX - pos.x).toDouble())).toFloat()
+            setSelectedObjectAngle(angle)
+            invalidate()
+        } else if (isPanning) {
+            translationX += dx * scaleFactor
+            translationY += dy * scaleFactor
             invalidate()
         }
+    }
+
+    private fun screenToWorld(screenX: Float, screenY: Float): PointF {
+        return PointF((screenX - translationX) / scaleFactor, (screenY - translationY) / scaleFactor)
     }
 
     private fun isOnRotationHandle(
@@ -621,9 +574,67 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private fun distance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
-        val dx = x2 - x1
-        val dy = y2 - y1
-        return sqrt(dx * dx + dy * dy)
+        return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
+    }
+
+    private fun selectObjectAt(x: Float, y: Float): Boolean {
+        clearSelection()
+
+        for (light in lights.reversed()) {
+            if (distance(x, y, light.position.x, light.position.y) < 30f) {
+                light.isSelected = true
+                selectedLight = light
+                notifySelectionChanged()
+                invalidate()
+                return true
+            }
+        }
+
+        for (mirror in mirrors.reversed()) {
+            if (distanceToLineSegment(PointF(x, y), mirror.getEndpoints()) < 40f) {
+                mirror.isSelected = true
+                selectedMirror = mirror
+                notifySelectionChanged()
+                invalidate()
+                return true
+            }
+        }
+
+        for (flag in flags.reversed()) {
+            if (distanceToLineSegment(PointF(x, y), flag.getEndpoints()) < 40f) {
+                flag.isSelected = true
+                selectedFlag = flag
+                notifySelectionChanged()
+                invalidate()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isAnyObjectSelected(): Boolean = selectedLight != null || selectedMirror != null || selectedFlag != null
+
+    private fun getSelectedObjectPosition(): PointF = selectedLight?.position ?: selectedMirror?.position ?: selectedFlag?.position ?: PointF()
+
+    private fun getSelectedObjectAngle(): Float = selectedLight?.angle ?: selectedMirror?.angle ?: selectedFlag?.angle ?: 0f
+
+    private fun setSelectedObjectAngle(angle: Float) {
+        selectedLight?.angle = angle
+        selectedMirror?.angle = angle
+        selectedFlag?.angle = angle
+    }
+
+    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            scaleFactor *= detector.scaleFactor
+            scaleFactor = Math.max(1.0f, Math.min(scaleFactor, 5.0f))
+
+            translationX = detector.focusX - (detector.focusX - translationX) * detector.scaleFactor
+            translationY = detector.focusY - (detector.focusY - translationY) * detector.scaleFactor
+
+            invalidate()
+            return true
+        }
     }
 
     private fun distanceToLineSegment(point: PointF, segment: Pair<PointF, PointF>): Float {

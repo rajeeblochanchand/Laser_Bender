@@ -2,3 +2,5 @@
 * When saving zoom should not be saved with artwork.
 * Puzzle game to point light ray in appropriate directon.
 * Curved Mirror
+
+Implemented zoom feature
