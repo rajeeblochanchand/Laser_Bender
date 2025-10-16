@@ -491,7 +491,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
         // Draw handle circle
         val handlePaint = Paint().apply {
-            color = Color.WHITE
+            color = Color.parseColor("#80FFFFFF")
             style = Paint.Style.FILL
             isAntiAlias = true
         }
@@ -499,7 +499,7 @@ class LaserCanvasView @JvmOverloads constructor(
 
         // Draw handle outline
         val handleOutlinePaint = Paint().apply {
-            color = Color.BLACK
+            color = Color.WHITE
             strokeWidth = 2f
             style = Paint.Style.STROKE
             isAntiAlias = true
