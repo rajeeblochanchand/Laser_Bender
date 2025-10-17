@@ -7,12 +7,14 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.ViewConfiguration
 import com.example.laserbender.data.model.Flag
 import com.example.laserbender.data.model.LightSource
 import com.example.laserbender.data.model.Mirror
 import com.example.laserbender.data.model.Selectable
 import com.example.laserbender.utils.RayTracer
 import java.util.Stack
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -42,8 +44,8 @@ class LaserCanvasView @JvmOverloads constructor(
 
     private var lastTouchX = 0f
     private var lastTouchY = 0f
-    private var dragStartX = 0f
-    private var dragStartY = 0f
+    private var downTouchX = 0f
+    private var downTouchY = 0f
 
     private var onSelectionChanged: ((Boolean, Boolean) -> Unit)? = null
     private var onHistoryChanged: (() -> Unit)? = null
@@ -57,6 +59,7 @@ class LaserCanvasView @JvmOverloads constructor(
     private var translationY = 0f
     private var isViewLocked = false
     private val scaleGestureDetector: ScaleGestureDetector
+    private val touchSlop: Int
 
     enum class Trigger { ADD, DELETE, MOVE, ROTATE, COLOR_CHANGE, INITIAL }
 
@@ -164,6 +167,7 @@ class LaserCanvasView @JvmOverloads constructor(
         edgeGlowPaint.maskFilter = BlurMaskFilter(15f, BlurMaskFilter.Blur.NORMAL)
 
         scaleGestureDetector = ScaleGestureDetector(context, ScaleListener())
+        touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
         saveState(Trigger.INITIAL)
     }
@@ -533,10 +537,10 @@ class LaserCanvasView @JvmOverloads constructor(
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                downTouchX = x
+                downTouchY = y
                 lastTouchX = x
                 lastTouchY = y
-                dragStartX = getSelectedObjectPosition().x
-                dragStartY = getSelectedObjectPosition().y
                 handleTouchDown(x, y)
             }
             MotionEvent.ACTION_MOVE -> {
@@ -548,7 +552,7 @@ class LaserCanvasView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP -> {
                 if (isDragging) {
-                    saveState(Trigger.MOVE, PointF(dragStartX, dragStartY), getSelectedObjectPosition())
+                    saveState(Trigger.MOVE)
                 } else if(isRotating) {
                     saveState(Trigger.ROTATE)
                 }
@@ -587,8 +591,11 @@ class LaserCanvasView @JvmOverloads constructor(
     }
 
     private fun handleTouchMove(x: Float, y: Float, dx: Float, dy: Float) {
-        if (!isRotating && !isPanning && isAnyObjectSelected()) {
-            isDragging = true
+        if (isAnyObjectSelected() && !isRotating && !isPanning) {
+            val distance = distance(downTouchX, downTouchY, x, y)
+            if (distance > touchSlop) {
+                isDragging = true
+            }
         }
         
         if (isDragging) {
